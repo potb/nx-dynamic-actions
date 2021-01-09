@@ -1,0 +1,168 @@
+on: push
+
+jobs:
+  install:
+    name: Get affected projects
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Install pnpm
+        uses: pnpm/action-setup@v1.2.1
+        with:
+          version: 5.14.3
+
+      - name: Checkout branch
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        id: cache-node-modules
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('./pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        uses: pnpm/action-setup@v1.2.1
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        with:
+          version: 5.14.3
+          run_install: true
+
+      - name: Get head revision
+        id: get-head
+        run: echo "::set-output name=head::$(git rev-parse HEAD)"
+
+      - name: Get base revision
+        id: get-base
+        run: echo "::set-output name=base::$(git rev-parse HEAD^)"
+
+      - name: Get projects to lint
+        id: get-projects-lint
+        run: echo "::set-output name=lint-matrix::$(pnpx nx print-affected --base ${{ steps.get-base.outputs.base }} --head ${{ steps.get-head.outputs.head }} --target lint | jq -c '.tasks | map(.target.project)')"
+
+      - name: Get projects to build
+        id: get-projects-build
+        run: echo "::set-output name=build-matrix::$(pnpx nx print-affected --base ${{ steps.get-base.outputs.base }} --head ${{ steps.get-head.outputs.head }} --target build | jq -c '.tasks | map(.target.project)')"
+
+    outputs:
+      lint-matrix: ${{ steps.get-projects-lint.outputs.lint-matrix }}
+      build-matrix: ${{ steps.get-projects-build.outputs.build-matrix }}
+
+  lint-needed:
+    name: Is linting needed ?
+    runs-on: ubuntu-20.04
+    needs: install
+    if: "!contains(needs.install.outputs.lint-matrix, '[]')"
+
+    steps:
+      - run: "true"
+
+  lint:
+    name: Lint ${{ matrix.project }}
+    runs-on: ubuntu-20.04
+    needs:
+      - install
+      - lint-needed
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.install.outputs.lint-matrix) }}
+
+    steps:
+      - name: Install pnpm
+        uses: pnpm/action-setup@v1.2.1
+        with:
+          version: 5.14.3
+
+      - name: Checkout branch
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        id: cache-node-modules
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('./pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        uses: pnpm/action-setup@v1.2.1
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        with:
+          version: 5.14.3
+          run_install: true
+
+      - name: Lint ${{ matrix.project }}
+        run: pnpm lint ${{ matrix.project }}
+
+  build-needed:
+    name: Is building needed ?
+    runs-on: ubuntu-20.04
+    needs: install
+    if: "!contains(needs.install.outputs.build-matrix, '[]')"
+
+    steps:
+      - run: "true"
+
+  build:
+    name: Build ${{ matrix.project }}
+    runs-on: ubuntu-20.04
+    needs:
+      - install
+      - build-needed
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.install.outputs.build-matrix) }}
+
+    steps:
+      - name: Install pnpm
+        uses: pnpm/action-setup@v1.2.1
+        with:
+          version: 5.14.3
+
+      - name: Checkout branch
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        id: cache-node-modules
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('./pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        uses: pnpm/action-setup@v1.2.1
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        with:
+          version: 5.14.3
+          run_install: true
+
+      - name: Build ${{ matrix.project }}
+        run: pnpm build ${{ matrix.project }}
+
+  deploy:
+    name: Deploy ${{ matrix.project }}
+    runs-on: ubuntu-20.04
+    needs:
+      - install
+      - lint
+      - build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.install.outputs.build-matrix) }}
+
+    steps:
+      - name: Placeholder for ${{ matrix.project }} deployment
+        run: |
+          echo Deploying ${{ matrix.project }}...
+          sleep 2
