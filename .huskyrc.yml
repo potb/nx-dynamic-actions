@@ -1,0 +1,2 @@
+hooks:
+  pre-commit: "pnpm affected:lint -- --parallel --fix && pnpm run affected:build -- --parallel"
