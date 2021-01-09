@@ -22,5 +22,19 @@
       }
     }
   },
-  "projects": {}
+  "projects": {
+    "dtos": {
+      "tags": []
+    },
+    "api": {
+      "tags": []
+    },
+    "webui": {
+      "tags": []
+    },
+    "webui-e2e": {
+      "tags": [],
+      "implicitDependencies": ["webui"]
+    }
+  }
 }
