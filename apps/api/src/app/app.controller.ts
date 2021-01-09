@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { dtos } from "@dynamic-matrix/dtos";
 
 import { AppService } from './app.service';
 
@@ -9,5 +10,10 @@ export class AppController {
   @Get()
   getData() {
     return this.appService.getData();
+  }
+
+  @Get()
+  getDtos() {
+    return dtos()
   }
 }
